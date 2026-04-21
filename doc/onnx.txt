@@ -1,0 +1,264 @@
+*onnx.nvim.txt*   ONNX speech-to-text for Neovim
+
+onnx.nvim
+=========
+
+Small-model speech input for Neovim using ONNX backends.
+
+Requirements:
+  - Neovim 0.10+
+  - ffmpeg for recording
+  - an external ONNX ASR CLI, for example sherpa-onnx
+
+COMMANDS                                        *onnx-commands*
+
+                                                *:OnnxRecordStart*
+:OnnxRecordStart
+    Start recording from the default microphone into a temporary wav file.
+
+                                                *:OnnxRecordStop*
+:OnnxRecordStop
+    Stop recording, run transcription, and insert the recognized text at the
+    current cursor position.
+
+                                              *:OnnxRecordToggle*
+:OnnxRecordToggle
+    Toggle recording. First call starts recording, second call stops and
+    transcribes.
+
+                                           *:OnnxTranscribeFile*
+:OnnxTranscribeFile {path}
+    Transcribe an existing wav file.
+
+SETUP                                              *onnx-setup*
+
+Lua example: >
+    require("onnx").setup({
+      keymaps = {
+        toggle = "<leader>vv",
+        modes = { "n", "i" },
+      },
+      recorder = {
+        sample_rate = 16000,
+        channels = 1,
+      },
+      transcriber = {
+        command = "sherpa-onnx",
+        args = {
+          "--tokens=/path/to/tokens.txt",
+          "--encoder=/path/to/encoder.onnx",
+          "--decoder=/path/to/decoder.onnx",
+          "--joiner=/path/to/joiner.onnx",
+        },
+        audio_flag = "--wav",
+      },
+    })
+<
+
+Example helper: >
+    require("onnx").setup_from_example("zipformer", {
+      transcriber = {
+        model = {
+          tokens = "/path/to/tokens.txt",
+          encoder = "/path/to/encoder.onnx",
+          decoder = "/path/to/decoder.onnx",
+          joiner = "/path/to/joiner.onnx",
+        },
+      },
+    })
+<
+
+Preset helper: >
+    require("onnx").setup_from_preset("zh_cn_zipformer", {
+      transcriber = {
+        model = {
+          tokens = "/path/to/tokens.txt",
+          encoder = "/path/to/encoder.onnx",
+          decoder = "/path/to/decoder.onnx",
+          joiner = "/path/to/joiner.onnx",
+        },
+      },
+    })
+<
+
+HEALTH                                            *onnx-health*
+
+Use: >
+    :checkhealth onnx
+<
+
+The health check verifies whether `ffmpeg` and `sherpa-onnx` are visible in
+`$PATH`.
+
+CONFIG                                            *onnx-config*
+
+`recorder.sample_rate`
+    Audio sample rate. Default: 16000.
+
+`recorder.channels`
+    Number of channels. Default: 1.
+
+`recorder.device`
+    Recorder device selector. On macOS the default is `:0`. On Linux the
+    default is `default`.
+
+`recorder.vad.enabled`
+    Enable auto-stop based on ffmpeg `silencedetect`. Default: false.
+
+`recorder.vad.silence_duration`
+    Number of silence seconds before auto-stop. Default: 1.2.
+
+`recorder.vad.noise`
+    Silence threshold passed to ffmpeg `silencedetect`. Default: `-35dB`.
+
+`recorder.vad.min_record_ms`
+    Minimum recording time before silence can trigger auto-stop. Default: 800.
+
+`recorder.command_builder`
+    Function `(output_path, recorder_cfg) -> {cmd, ...args}` to fully replace
+    the default recording command.
+
+`transcriber.command`
+    Executable name or absolute path for the ASR backend.
+
+`transcriber.backend`
+    Built-in backend preset. Current supported value: `sherpa-onnx`.
+
+`transcriber.args`
+    Static argument list passed before the audio file argument.
+
+`transcriber.audio_flag`
+    Flag name used before the audio path. Default: `--wav`. Set to an empty
+    string if the backend expects the path without a flag.
+
+`transcriber.command_builder`
+    Function `(audio_path, transcriber_cfg) -> cmd, args` to fully replace the
+    default transcription command construction.
+
+`transcriber.parse`
+    Function `(stdout) -> text` to parse backend output.
+
+`transcriber.model.tokens`
+    Path to sherpa-onnx tokens file.
+
+`transcriber.model.encoder`
+    Path to sherpa-onnx encoder model.
+
+`transcriber.model.decoder`
+    Path to sherpa-onnx decoder model.
+
+`transcriber.model.joiner`
+    Path to sherpa-onnx joiner model.
+
+`transcriber.model.paraformer`
+    Path to a sherpa-onnx paraformer model.
+
+`transcriber.model.ctc`
+    Path to a sherpa-onnx zipformer2 CTC model.
+
+`transcriber.model.bpe_vocab`
+    Optional BPE vocab path for supported sherpa-onnx models.
+
+`transcriber.model.num_threads`
+    Optional sherpa-onnx thread count.
+
+`transcriber.model.decoding_method`
+    Optional sherpa-onnx decoding method.
+
+`transcriber.model.provider`
+    Optional sherpa-onnx execution provider.
+
+`setup_from_example(name, overrides)`
+    Load a built-in example from `examples/sherpa-onnx.lua` and merge optional
+    overrides into it.
+
+`setup_from_preset(name, overrides)`
+    Load a built-in preset from `lua/onnx/presets.lua` and merge optional
+    overrides into it.
+
+`transcriber.partial.enabled`
+    Enable partial-result preview based on incremental stdout lines. Default:
+    false.
+
+`transcriber.partial.prefix`
+    Prefix used by the default partial parser. Default: `partial:`.
+
+`transcriber.partial.parse`
+    Function `(line) -> text|nil` to parse a single stdout line into a partial
+    preview string.
+
+`insert_mode`
+    Insert the recognized text into the current buffer. Default: true.
+
+`auto_cleanup`
+    Delete temporary wav files after transcription. Default: true.
+
+`keymaps.toggle`
+    Map a single key to start on first press and stop on second press.
+
+`keymaps.start`
+    Map a key to start recording.
+
+`keymaps.stop`
+    Map a key to stop recording and transcribe.
+
+`keymaps.modes`
+    Mapping modes for the generated keymaps. Default: `{ "n", "i" }`.
+
+`ui.status_window.enabled`
+    Show a floating recording indicator. Default: true.
+
+`ui.status_window.border`
+    Border style for the floating recording window. Default: `rounded`.
+
+`ui.status_window.icon`
+    Prefix icon shown in the recording indicator. Default: `●`.
+
+`ui.status_window.style`
+    Status window style. Use `meter` for animated bars or `compact` for plain
+    text. Default: `meter`.
+
+`ui.status_window.width`
+    Width of the floating recording window. Default: 30.
+
+`ui.status_window.height`
+    Height of the floating recording window. Default: 1.
+
+`ui.status_window.row`
+    Editor row for the floating recording window. Default: 1.
+
+`ui.status_window.col`
+    Editor column for the floating recording window. Default: right aligned.
+
+`ui.status_window.meter_width`
+    Number of animated bar cells in `meter` style. Default: 8.
+
+`ui.status_window.meter_chars`
+    Characters used by the `meter` style. Defaults: `{ full = "|", empty = "." }`.
+
+`ui.preview_window.enabled`
+    Show a floating window for partial transcription results. Default: true.
+
+`ui.preview_window.border`
+    Border style for the partial preview window. Default: `rounded`.
+
+`ui.preview_window.width`
+    Width of the partial preview window. Default: 48.
+
+`ui.preview_window.height`
+    Height of the partial preview window. Default: 3.
+
+`ui.preview_window.row`
+    Editor row for the partial preview window. Default: 4.
+
+`ui.preview_window.col`
+    Editor column for the partial preview window. Default: right aligned.
+
+`ui.preview_window.title`
+    Title shown in the partial preview window. Default: ` onnx partial `.
+
+Terminal Neovim does not receive reliable key-release events for ordinary
+keyboard keys, so true "hold to talk, release to stop" behavior is not
+implemented. Use toggle/start/stop mappings instead.
+
+vim:tw=78:ts=8:noet:ft=help:norl:
