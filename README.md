@@ -2,6 +2,8 @@
 
 WARNING!! This repo has archived, please use [cxwx/voiceinput.nvim](https://github.com/cxwx/voiceinput.nvim) instead.
 
+----------------------------------------------------------------------
+
 Neovim 语音输入插件，走 ONNX 小模型，不走 Whisper。
 
 默认设计是：
